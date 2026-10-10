@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>آلة حاسبة PGCD</title>
+<style>
+body { font-family: Arial, sans-serif; background: #1a1a2e; color: #eee; padding: 20px; }
+.container { max-width: 600px; margin: auto; background: #16213e; padding: 25px; border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+h1 { text-align: center; color: #e94560; }
+label { display: block; margin-top: 15px; font-weight: bold; }
+input, select { width: 100%; padding: 10px; margin-top: 5px; border-radius: 8px; border: none; background: #0f3460; color: #fff; font-size: 16px; }
+button { width: 100%; padding: 12px; margin-top: 20px; background: #e94560; color: white; border: none; border-radius: 8px; font-size: 18px; cursor: pointer; }
+button:hover { background: #ff6b81; }
+.result { margin-top: 25px; background: #0f3460; padding: 20px; border-radius: 10px; line-height: 1.8; }
+pre { background: #1a1a2e; padding: 10px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>🧮 آلة حاسبة PGCD</h1>
+<label>العدد الأول:</label>
+<input type="number" id="a" min="1">
+<label>العدد الثاني:</label>
+<input type="number" id="b" min="1">
+<label>اختر الطريقة:</label>
+<select id="methode">
+<option value="division">القسمات المتتالية</option>
+<option value="soustraction">الطروحات المتتالية</option>
+<option value="factorisation">التحليل إلى عوامل أولية</option>
+<option value="etendu">PGCD الموسع (بيزو)</option>
+<option value="ppcm">PPCM</option>
+</select>
+<button onclick="calculer()">احسب</button>
+<div id="resultat" class="result" style="display:none;"></div>
+</div>
+
+<script>
+function pgcdDivision(a, b) {
+    let steps = [];
+    while (b !== 0) {
+        let q = Math.floor(a / b);
+        let r = a % b;
+        steps.push(`${a} = ${b} × ${q} + ${r}`);
+        a = b; b = r;
+    }
+    return { pgcd: a, steps: steps };
+}
+
+function pgcdSoustraction(a, b) {
+    let steps = [];
+    while (a !== b) {
+        if (a > b) { steps.push(`${a} - ${b} = ${a-b}`); a = a - b; }
+        else { steps.push(`${b} - ${a} = ${b-a}`); b = b - a; }
+    }
+    return { pgcd: a, steps: steps };
+}
+
+function factoriser(n) {
+    let facteurs = {};
+    let d = 2;
+    while (d * d <= n) {
+        while (n % d === 0) { facteurs[d] = (facteurs[d] || 0) + 1; n = Math.floor(n / d); }
+        d++;
+    }
+    if (n > 1) facteurs[n] = (facteurs[n] || 0) + 1;
+    return facteurs;
+}
+
+function pgcdFactorisation(a, b) {
+    let fa = factoriser(a);
+    let fb = factoriser(b);
+    let faStr = Object.entries(fa).map(([k,v]) => v > 1 ? `${k}^${v}` : k).join(" × ");
+    let fbStr = Object.entries(fb).map(([k,v]) => v > 1 ? `${k}^${v}` : k).join(" × ");
+    let communs = {};
+    for (let p in fa) { if (fb[p]) communs[p] = Math.min(fa[p], fb[p]); }
+    let res = 1;
+    let commStr = "لا توجد عوامل مشتركة";
+    if (Object.keys(communs).length > 0) {
+        commStr = Object.entries(communs).map(([k,v]) => v > 1 ? `${k}^${v}` : k).join(" × ");
+        for (let p in communs) res *= Math.pow(p, communs[p]);
+    }
+    return { pgcd: res, fa: faStr, fb: fbStr, comm: commStr };
+}
+
+function pgcdEtendu(a, b) {
+    let oldR = a, r = b, oldU = 1, u = 0, oldV = 0, v = 1;
+    let steps = [];
+    while (r !== 0) {
+        let q = Math.floor(oldR / r);
+        steps.push(`${oldR} = ${r} × ${q} + ${oldR - q*r}`);
+        [oldR, r] = [r, oldR - q*r];
+        [oldU, u] = [u, oldU - q*u];
+        [oldV, v] = [v, oldV - q*v];
+    }
+    return { pgcd: oldR, u: oldU, v: oldV, steps: steps };
+}
+
+function ppcm(a, b) {
+    let pg = pgcdDivision(a, b).pgcd;
+    return Math.abs(a * b) / pg;
+}
+
+function calculer() {
+    let a = parseInt(document.getElementById('a').value);
+    let b = parseInt(document.getElementById('b').value);
+    let methode = document.getElementById('methode').value;
+    let resDiv = document.getElementById('resultat');
+    resDiv.style.display = 'block';
+
+    if (!a || !b || a <= 0 || b <= 0) {
+        resDiv.innerHTML = '<p style="color:#ff6b81;">الرجاء إدخال أعداد صحيحة موجبة</p>';
+        return;
+    }
+
+    let html = '';
+    if (methode === 'division') {
+        let r = pgcdDivision(a, b);
+        html = `<h2>PGCD بطريقة القسمات</h2><p><strong>النتيجة: PGCD = ${r.pgcd}</strong></p><pre>${r.steps.join('\n')}</pre>`;
+    } else if (methode === 'soustraction') {
+        let r = pgcdSoustraction(a, b);
+        html = `<h2>PGCD بطريقة الطروحات</h2><p><strong>النتيجة: PGCD = ${r.pgcd}</strong></p><pre>${r.steps.join('\n')}</pre>`;
+    } else if (methode === 'factorisation') {
+        let r = pgcdFactorisation(a, b);
+        html = `<h2>PGCD بطريقة التحليل</h2><p><strong>النتيجة: PGCD = ${r.pgcd}</strong></p><p>تحليل ${a} = ${r.fa}</p><p>تحليل ${b} = ${r.fb}</p><p>العوامل المشتركة: ${r.comm}</p>`;
+    } else if (methode === 'etendu') {
+        let r = pgcdEtendu(a, b);
+        html = `<h2>PGCD الموسع (بيزو)</h2><p><strong>النتيجة: PGCD = ${r.pgcd}</strong></p><p>u = ${r.u}, v = ${r.v}</p><pre>${r.steps.join('\n')}</pre>`;
+    } else if (methode === 'ppcm') {
+        let p = ppcm(a, b);
+        html = `<h2>PPCM</h2><p><strong>النتيجة: PPCM = ${p}</strong></p>`;
+    }
+    resDiv.innerHTML = html;
+}
+</script>
+</body>
+</html>
